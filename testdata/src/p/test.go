@@ -12,11 +12,12 @@ func CheckValidMessages() {
 	slog.Info("lowercase")
 }
 
-func CheckInvalidMEssage() {
+func CheckInvalidMessage() {
 	log.Print("Starting server on port 8080")   // want "message must start with a lowercase letter"
 	slog.Error("Failed to connect to database") // want "message must start with a lowercase letter"
 	slog.Warn("Something went wrong")           // want "message must start with a lowercase letter"
 	log.Printf("Connection failed")             // want "message must start with a lowercase letter"
+
 }
 
 func CheckIgnored() {

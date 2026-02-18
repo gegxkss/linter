@@ -71,10 +71,18 @@ func isLog(expr ast.Expr) bool {
 
 	id, ok := sel.X.(*ast.Ident)
 	if !ok {
+		call, ok := sel.X.(*ast.CallExpr)
+		if ok {
+			if sel2, ok := call.Fun.(*ast.SelectorExpr); ok {
+				if id2, ok := sel2.X.(*ast.Ident); ok && id2.Name == "zap" {
+					return true
+				}
+			}
+		}
 		return false
 	}
 
-	if id.Name == "log" || id.Name == "slog" {
+	if id.Name == "log" || id.Name == "slog" || id.Name == "sugar" || id.Name == "logger" || id.Name == "s" || id.Name == "zap" {
 		return true
 	}
 
@@ -85,13 +93,28 @@ func checkCase(pass *analysis.Pass, lit *ast.BasicLit, messageText string) {
 	if len(messageText) > 0 {
 		first := []rune(messageText)[0]
 		if unicode.IsUpper(first) {
-			pass.Reportf(lit.Pos(), "the message must start with a lowercase letter")
+			fix := analysis.SuggestedFix{
+				Message: "change first letter to lowercase",
+				TextEdits: []analysis.TextEdit{
+					{
+						Pos:     lit.Pos() + 1,
+						End:     lit.Pos() + 2,
+						NewText: []byte(strings.ToLower(string(first))),
+					},
+				},
+			}
+			pass.Report(analysis.Diagnostic{
+				Pos:            lit.Pos(),
+				End:            lit.End(),
+				Message:        "message must start with a lowercase letter",
+				SuggestedFixes: []analysis.SuggestedFix{fix},
+			})
 		}
 	}
 }
 
-func checkLanguageAndSymbols(pass *analysis.Pass, lit *ast.BasicLit, massageText string) {
-	for _, char := range massageText {
+func checkLanguageAndSymbols(pass *analysis.Pass, lit *ast.BasicLit, messageText string) {
+	for _, char := range messageText {
 		if (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || unicode.IsDigit(char) || char == ' ' {
 			continue
 		} else {
@@ -116,7 +139,7 @@ func checkSensitiveData(pass *analysis.Pass, lit *ast.BasicLit) {
 		"privateKey":   true,
 	}
 
-	message := strings.ToLower(strings.Trim(lit.Value, `"`))
+	message := strings.ToLower(strings.Trim(lit.Value, "\""))
 
 	for word := range sensitiveWords {
 		if strings.Contains(message, word+":") || strings.Contains(message, word+"=") {
