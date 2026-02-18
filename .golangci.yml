@@ -1,0 +1,8 @@
+linters:
+  enable:
+    - linter
+
+linters-settings:
+  linter:
+    path: ./plugin
+    enabled: true
