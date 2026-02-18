@@ -23,3 +23,16 @@ func CheckIgnored() {
 	message := "Hello"
 	log.Print(message)
 }
+
+func checkLanguageAndSymbols() {
+	slog.Error("ошибка подключения к базе данных") // want "message must be english letters without special symbols only"
+	slog.Error("failed to connect to database")
+	slog.Error("Oшибка подключения к базе данных")    // want "message must be english letters without special symbols only" "message must start with a lowercase letter"
+	log.Print("server started!🚀")                     // want "message must be english letters without special symbols only"
+	log.Fatal("connection failed!!!")                 // want "message must be english letters without special symbols only"
+	slog.Warn("Warning: something went wrong...")     // want "message must be english letters without special symbols only"  "message must start with a lowercase letter"
+	slog.Error("Oшибка подключения к базе данных!!!") // want "message must be english letters without special symbols only"  "message must start with a lowercase letter"
+	log.Fatal("connection.")                          // want "message must be english letters without special symbols only"
+	log.Print("starting server on port 8080")
+	log.Print("starting server on port 8080.") // want "message must be english letters without special symbols only"
+}

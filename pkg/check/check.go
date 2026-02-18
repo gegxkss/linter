@@ -25,6 +25,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return true
 		}
 
+		if len(call.Args) == 0 {
+			return true
+		}
+
 		message := call.Args[0]
 
 		lit, ok := message.(*ast.BasicLit)
@@ -33,17 +37,18 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		messageText := lit.Value
+
+		if messageText == "" {
+			return true
+		}
+
 		if len(messageText) >= 2 {
 			messageText = messageText[1 : len(messageText)-1]
 		}
 
-		if len(messageText) > 0 {
-			first := []rune(messageText)[0]
-			if unicode.IsUpper(first) {
-				pass.Reportf(lit.Pos(),
-					"message must start with a lowercase letter")
-			}
-		}
+		checkCase(pass, lit, messageText)
+		checkLanguageAndSymbols(pass, lit, messageText)
+
 		return true
 	}
 
@@ -71,4 +76,26 @@ func isLog(expr ast.Expr) bool {
 	}
 
 	return false
+}
+
+func checkCase(pass *analysis.Pass, lit *ast.BasicLit, messageText string) {
+	if len(messageText) > 0 {
+		first := []rune(messageText)[0]
+		if unicode.IsUpper(first) {
+			pass.Reportf(lit.Pos(),
+				"message must start with a lowercase letter")
+		}
+	}
+}
+
+func checkLanguageAndSymbols(pass *analysis.Pass, lit *ast.BasicLit, massageText string) {
+	for _, char := range massageText {
+		if (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || unicode.IsDigit(char) || char == ' ' {
+			continue
+		} else {
+			pass.Reportf(lit.Pos(),
+				"message must be english letters without special symbols only")
+			break
+		}
+	}
 }
