@@ -3,6 +3,7 @@ package check
 import (
 	"go/ast"
 	"go/token"
+	"strings"
 	"unicode"
 
 	"golang.org/x/tools/go/analysis"
@@ -35,6 +36,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if !ok || lit.Kind != token.STRING {
 			return true
 		}
+
+		checkSensitiveData(pass, lit)
 
 		messageText := lit.Value
 
@@ -82,8 +85,7 @@ func checkCase(pass *analysis.Pass, lit *ast.BasicLit, messageText string) {
 	if len(messageText) > 0 {
 		first := []rune(messageText)[0]
 		if unicode.IsUpper(first) {
-			pass.Reportf(lit.Pos(),
-				"message must start with a lowercase letter")
+			pass.Reportf(lit.Pos(), "the message must start with a lowercase letter")
 		}
 	}
 }
@@ -93,9 +95,33 @@ func checkLanguageAndSymbols(pass *analysis.Pass, lit *ast.BasicLit, massageText
 		if (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || unicode.IsDigit(char) || char == ' ' {
 			continue
 		} else {
-			pass.Reportf(lit.Pos(),
-				"message must be english letters without special symbols only")
+			pass.Reportf(lit.Pos(), "the message must be english letters without special symbols only")
 			break
+		}
+	}
+}
+
+func checkSensitiveData(pass *analysis.Pass, lit *ast.BasicLit) {
+	var sensitiveWords = map[string]bool{
+		"password":     true,
+		"pass":         true,
+		"userPassword": true,
+		"userPass":     true,
+		"secret":       true,
+		"auth":         true,
+		"token":        true,
+		"api_key":      true,
+		"apikey":       true,
+		"private_key":  true,
+		"privateKey":   true,
+	}
+
+	message := strings.ToLower(strings.Trim(lit.Value, `"`))
+
+	for word := range sensitiveWords {
+		if strings.Contains(message, word+":") || strings.Contains(message, word+"=") {
+			pass.Reportf(lit.Pos(), "the message contains sensitive data")
+			return
 		}
 	}
 }
